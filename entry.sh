@@ -1,14 +1,26 @@
 #!/bin/sh
 
+set -e
+
 # Ensure User and Group IDs
 if [ ! "$(id -u vintagestory)" -eq "$UID" ]; then usermod -o -u "$UID" vintagestory ; fi
 if [ ! "$(id -g vintagestory)" -eq "$GID" ]; then groupmod -o -g "$GID" vintagestory ; fi
 
-# Path to version file
-VERSION_FILE="/data/server-file/.version"
+VERSION_FILE="/data/server-file/.version" # Path to version file
+SERVER_DLL="/data/VintagestoryServer.dll" # Path to server dll
 
-# Path to server dll
-SERVER_DLL="/data/VintagestoryServer.dll"
+# Function to determine if string is a boolean
+is_boolean() {
+	case "$1" in
+		true|false) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+# Function to determine if string is a boolean
+is_number() {
+	[[ "$1" =~ ^-?[0-9]+([.][0-9]+)?$ ]]
+}
 
 # Download and extract the server if the version is different or VintagestoryServer.dll is missing
 if [ ! -f "$VERSION_FILE" ] || [ ! "$SERVER_VERSION" = "$(cat $VERSION_FILE || echo '')" ] || [ ! -f "$SERVER_DLL" ]; then
@@ -24,6 +36,8 @@ fi
 
 chown -R vintagestory:vintagestory /data
 
+echo "Applying Server Configuration"
+
 # Apply server configuration
 serverconfig="/data/server-file/serverconfig.json"
 
@@ -31,96 +45,83 @@ if [ ! -f "$serverconfig" ]; then
 	cp /data/default-serverconfig.json "$serverconfig"
 fi
 
-jq '.Port = $val' --arg val "$SERVER_PORT" $serverconfig | sponge $serverconfig
+# A list of env var name -> jq path mappings
+declare -A settings=(
+	[SERVER_PORT]=".Port|tonumber"
+	[SERVER_NAME]=".ServerName"
+	[SERVER_DESCRIPTION]=".ServerDescription"
+	[SERVER_MOTD]=".WelcomeMessage"
+	[SERVER_MAX_CLIENTS]=".MaxClients|tonumber"
+	[SERVER_PASS_TIME_WHEN_EMPTY]=".PassTimeWhenEmpty|boolean"
+	[SERVER_PASSWORD]=".Password"
+	[SERVER_PUBLIC]=".AdvertiseServer|boolean"
+	[SERVER_SERVER_LANGUAGE]=".ServerLanguage"
+	[SERVER_PVP]=".AllowPvP|boolean"
+	[SERVER_FIRE_SPREAD]=".AllowFireSpread|boolean"
+	[SERVER_WORLD_SEED]=".WorldConfig.Seed"
+	[SERVER_DIE_ABOVE_MEMORY_USAGE]=".DieAboveMemoryUsageMb|tonumber"
+	[SERVER_MAX_CLIENTS_IN_QUEUE]=".MaxClientsInQueue|tonumber"
+	[SERVER_LOGIN_FLOOD_PROTECTION]=".LoginFloodProtection|boolean"
+	[SERVER_MAP_SIZE_X]=".MapSizeX|tonumber"
+	[SERVER_MAP_SIZE_Y]=".MapSizeY|tonumber"
+	[SERVER_MAP_SIZE_Z]=".MapSizeZ|tonumber"
+	# WorldConfig subproperties
+	[WORLDCONFIG_GAMEMODE]=".WorldConfig.WorldConfiguration.gameMode"
+	[WORLDCONFIG_STARTING_CLIMATE]=".WorldConfig.WorldConfiguration.startingClimate"
+	[WORLDCONFIG_SPAWN_RADIUS]=".WorldConfig.WorldConfiguration.spawnRadius|tonumber"
+	[WORLDCONFIG_GRACE_TIMER]=".WorldConfig.WorldConfiguration.graceTimer|tonumber"
+	[WORLDCONFIG_DEATH_PUNISHMENT]=".WorldConfig.WorldConfiguration.deathPunishment"
+	[WORLDCONFIG_DROPPED_ITEMS_TIMER]=".WorldConfig.WorldConfiguration.droppedItemsTimer|tonumber"
+	[WORLDCONFIG_SEASONS]=".WorldConfig.WorldConfiguration.seasons"
+	[WORLDCONFIG_PLAYERLIVES]=".WorldConfig.WorldConfiguration.playerlives|tonumber"
+	[WORLDCONFIG_LUNG_CAPACITY]=".WorldConfig.WorldConfiguration.lungCapacity|tonumber"
+	[WORLDCONFIG_DAYS_PER_MONTH]=".WorldConfig.WorldConfiguration.daysPerMonth|tonumber"
+	[WORLDCONFIG_HARSH_WINTERS]=".WorldConfig.WorldConfiguration.harshWinters"
+	[WORLDCONFIG_BLOCK_GRAVITY]=".WorldConfig.WorldConfiguration.blockGravity"
+	[WORLDCONFIG_CAVE_INS]=".WorldConfig.WorldConfiguration.caveIns"
+	[WORLDCONFIG_ALLOW_UNDERGROUND_FARMING]=".WorldConfig.WorldConfiguration.allowUndergroundFarming|boolean"
+	[WORLDCONFIG_NO_LIQUID_SOURCE_TRANSPORT]=".WorldConfig.WorldConfiguration.noLiquidSourceTransport|boolean"
+	[WORLDCONFIG_BODY_TEMPERATURE_RESISTANCE]=".WorldConfig.WorldConfiguration.bodyTemperatureResistance|tonumber"
+	[WORLDCONFIG_CREATURE_HOSTILITY]=".WorldConfig.WorldConfiguration.creatureHostility"
+	[WORLDCONFIG_CREATURE_STRENGTH]=".WorldConfig.WorldConfiguration.creatureStrength"
+	[WORLDCONFIG_CREATURE_SWIM_SPEED]=".WorldConfig.WorldConfiguration.creatureSwimSpeed|tonumber"
+	[WORLDCONFIG_PLAYER_HEALTH_POINTS]=".WorldConfig.WorldConfiguration.playerHealthPoints|tonumber"
+	[WORLDCONFIG_PLAYER_HUNGER_SPEED]=".WorldConfig.WorldConfiguration.playerHungerSpeed|tonumber"
+	[WORLDCONFIG_PLAYER_HEALTH_REGEN_SPEED]=".WorldConfig.WorldConfiguration.playerHealthRegenSpeed|tonumber"
+	[WORLDCONFIG_PLAYER_MOVE_SPEED]=".WorldConfig.WorldConfiguration.playerMoveSpeed|tonumber"
+	[WORLDCONFIG_FOOD_SPOIL_SPEED]=".WorldConfig.WorldConfiguration.foodSpoilSpeed|tonumber"
+	[WORLDCONFIG_SAPLING_GROWTH_RATE]=".WorldConfig.WorldConfiguration.saplingGrowthRate|tonumber"
+	[WORLDCONFIG_TOOL_DURABILITY]=".WorldConfig.WorldConfiguration.toolDurability|tonumber"
+	[WORLDCONFIG_TOOL_MINING_SPEED]=".WorldConfig.WorldConfiguration.toolMiningSpeed|tonumber"
+	[WORLDCONFIG_PROPICK_NODE_SEARCH_RADIUS]=".WorldConfig.WorldConfiguration.propickNodeSearchRadius|tonumber"
+	[WORLDCONFIG_MICROBLOCK_CHISELING]=".WorldConfig.WorldConfiguration.microblockChiseling"
+)
 
-if [ -n "$SERVER_NAME" ]; then jq '.ServerName = $val' --arg val "$SERVER_NAME" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_DESCRIPTION" ]; then jq '.ServerDescription = $val' --arg val "$SERVER_DESCRIPTION" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MOTD" ]; then jq '.WelcomeMessage = $val' --arg val "$SERVER_MOTD" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MAX_CLIENTS" ]; then jq '.MaxClients = ($val | tonumber)' --arg val "$SERVER_MAX_CLIENTS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_PASS_TIME_WHEN_EMPTY" ]; then jq '.PassTimeWhenEmpty = ($val | test("true"))' --arg val "$SERVER_PASS_TIME_WHEN_EMPTY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_PASSWORD" ]; then jq '.Password = $val' --arg val "$SERVER_PASSWORD" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_WHITELIST" ]; then
-	whitelist_mode=$( [ "$SERVER_WHITELIST" = "true" ] && echo 2 || echo 1 )
-	jq '.WhitelistMode = ($val | tonumber)' --arg val "$whitelist_mode" $serverconfig | sponge $serverconfig ;
-else
-	jq '.WhitelistMode = 1' $serverconfig | sponge $serverconfig ;
-fi
-if [ -n "$SERVER_PUBLIC" ]; then jq '.AdvertiseServer = ($val | test("true"))' --arg val "$SERVER_PUBLIC" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_SERVER_LANGUAGE" ]; then jq '.ServerLanguage = $val' --arg val "$SERVER_SERVER_LANGUAGE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_PVP" ]; then jq '.AllowPvP = ($val | test("true"))' --arg val "$SERVER_PVP" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_FIRE_SPREAD" ]; then jq '.AllowFireSpread = ($val | test("true"))' --arg val "$SERVER_FIRE_SPREAD" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_WORLD_SEED" ]; then jq '.WorldConfig.Seed = $val' --arg val "$SERVER_WORLD_SEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_DIE_ABOVE_MEMORY_USAGE" ]; then jq '.DieAboveMemoryUsageMb = ($val | tonumber)' --arg val "$SERVER_DIE_ABOVE_MEMORY_USAGE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MAX_CLIENTS_IN_QUEUE" ]; then jq '.MaxClientsInQueue = ($val | tonumber)' --arg val "$SERVER_MAX_CLIENTS_IN_QUEUE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_LOGIN_FLOOD_PROTECTION" ]; then jq '.LoginFloodProtection = ($val | test("true"))' --arg val "$SERVER_LOGIN_FLOOD_PROTECTION" $serverconfig | sponge $serverconfig ; fi
-
-if [ -n "$SERVER_MAP_SIZE_X" ]; then jq '.MapSizeX = ($val | tonumber)' --arg val "$SERVER_MAP_SIZE_X" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MAP_SIZE_Y" ]; then jq '.MapSizeY = ($val | tonumber)' --arg val "$SERVER_MAP_SIZE_Y" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MAP_SIZE_Y" ]; then jq '.WorldConfig.MapSizeY = ($val | tonumber)' --arg val "$SERVER_MAP_SIZE_Y" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$SERVER_MAP_SIZE_Z" ]; then jq '.MapSizeZ = ($val | tonumber)' --arg val "$SERVER_MAP_SIZE_Z" $serverconfig | sponge $serverconfig ; fi
-
-# Apply World Configuration
-if [ -n "$WORLDCONFIG_GAMEMODE" ]; then jq '.WorldConfig.WorldConfiguration.gameMode = $val' --arg val "$WORLDCONFIG_GAMEMODE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_STARTING_CLIMATE" ]; then jq '.WorldConfig.WorldConfiguration.startingClimate = $val' --arg val "$WORLDCONFIG_STARTING_CLIMATE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SPAWN_RADIUS" ]; then jq '.WorldConfig.WorldConfiguration.spawnRadius = $val' --arg val "$WORLDCONFIG_SPAWN_RADIUS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GRACE_TIMER" ]; then jq '.WorldConfig.WorldConfiguration.graceTimer = $val' --arg val "$WORLDCONFIG_GRACE_TIMER" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_DEATH_PUNISHMENT" ]; then jq '.WorldConfig.WorldConfiguration.deathPunishment = $val' --arg val "$WORLDCONFIG_DEATH_PUNISHMENT" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_DROPPED_ITEMS_TIMER" ]; then jq '.WorldConfig.WorldConfiguration.droppedItemsTimer = $val' --arg val "$WORLDCONFIG_DROPPED_ITEMS_TIMER" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SEASONS" ]; then jq '.WorldConfig.WorldConfiguration.seasons = $val' --arg val "$WORLDCONFIG_SEASONS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PLAYERLIVES" ]; then jq '.WorldConfig.WorldConfiguration.playerlives = $val' --arg val "$WORLDCONFIG_PLAYERLIVES" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_LUNG_CAPACITY" ]; then jq '.WorldConfig.WorldConfiguration.lungCapacity = $val' --arg val "$WORLDCONFIG_LUNG_CAPACITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_DAYS_PER_MONTH" ]; then jq '.WorldConfig.WorldConfiguration.daysPerMonth = $val' --arg val "$WORLDCONFIG_DAYS_PER_MONTH" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_HARSH_WINTERS" ]; then jq '.WorldConfig.WorldConfiguration.harshWinters = $val' --arg val "$WORLDCONFIG_HARSH_WINTERS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_BLOCK_GRAVITY" ]; then jq '.WorldConfig.WorldConfiguration.blockGravity = $val' --arg val "$WORLDCONFIG_BLOCK_GRAVITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CAVE_INS" ]; then jq '.WorldConfig.WorldConfiguration.caveIns = $val' --arg val "$WORLDCONFIG_CAVE_INS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_ALLOW_UNDERGROUND_FARMING" ]; then jq '.WorldConfig.WorldConfiguration.allowUndergroundFarming = ($val | test("true"))' --arg val "$WORLDCONFIG_ALLOW_UNDERGROUND_FARMING" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_NO_LIQUID_SOURCE_TRANSPORT" ]; then jq '.WorldConfig.WorldConfiguration.noLiquidSourceTransport = ($val | test("true"))' --arg val "$WORLDCONFIG_NO_LIQUID_SOURCE_TRANSPORT" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_BODY_TEMPERATURE_RESISTANCE" ]; then jq '.WorldConfig.WorldConfiguration.bodyTemperatureResistance = $val' --arg val "$WORLDCONFIG_BODY_TEMPERATURE_RESISTANCE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CREATURE_HOSTILITY" ]; then jq '.WorldConfig.WorldConfiguration.creatureHostility = $val' --arg val "$WORLDCONFIG_CREATURE_HOSTILITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CREATURE_STRENGTH" ]; then jq '.WorldConfig.WorldConfiguration.creatureStrength = $val' --arg val "$WORLDCONFIG_CREATURE_STRENGTH" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CREATURE_SWIM_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.creatureSwimSpeed = $val' --arg val "$WORLDCONFIG_CREATURE_SWIM_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PLAYER_HEALTH_POINTS" ]; then jq '.WorldConfig.WorldConfiguration.playerHealthPoints = $val' --arg val "$WORLDCONFIG_PLAYER_HEALTH_POINTS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PLAYER_HUNGER_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.playerHungerSpeed = $val' --arg val "$WORLDCONFIG_PLAYER_HUNGER_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PLAYER_HEALTH_REGEN_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.playerHealthRegenSpeed = $val' --arg val "$WORLDCONFIG_PLAYER_HEALTH_REGEN_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PLAYER_MOVE_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.playerMoveSpeed = $val' --arg val "$WORLDCONFIG_PLAYER_MOVE_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_FOOD_SPOIL_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.foodSpoilSpeed = $val' --arg val "$WORLDCONFIG_FOOD_SPOIL_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SAPLING_GROWTH_RATE" ]; then jq '.WorldConfig.WorldConfiguration.saplingGrowthRate = $val' --arg val "$WORLDCONFIG_SAPLING_GROWTH_RATE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TOOL_DURABILITY" ]; then jq '.WorldConfig.WorldConfiguration.toolDurability = $val' --arg val "$WORLDCONFIG_TOOL_DURABILITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TOOL_MINING_SPEED" ]; then jq '.WorldConfig.WorldConfiguration.toolMiningSpeed = $val' --arg val "$WORLDCONFIG_TOOL_MINING_SPEED" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_PROPICK_NODE_SEARCH_RADIUS" ]; then jq '.WorldConfig.WorldConfiguration.propickNodeSearchRadius = $val' --arg val "$WORLDCONFIG_PROPICK_NODE_SEARCH_RADIUS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_MICROBLOCK_CHISELING" ]; then jq '.WorldConfig.WorldConfiguration.microblockChiseling = $val' --arg val "$WORLDCONFIG_MICROBLOCK_CHISELING" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_ALLOW_COORDINATE_HUD" ]; then jq '.WorldConfig.WorldConfiguration.allowCoordinateHud = ($val | test("true"))' --arg val "$WORLDCONFIG_ALLOW_COORDINATE_HUD" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_ALLOW_MAP" ]; then jq '.WorldConfig.WorldConfiguration.allowMap = ($val | test("true"))' --arg val "$WORLDCONFIG_ALLOW_MAP" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_COLOR_ACCURATE_WORLDMAP" ]; then jq '.WorldConfig.WorldConfiguration.colorAccurateWorldmap =($val | test("true"))' --arg val "$WORLDCONFIG_COLOR_ACCURATE_WORLDMAP" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_LORE_CONTENT" ]; then jq '.WorldConfig.WorldConfiguration.loreContent = ($val | test("true"))' --arg val "$WORLDCONFIG_LORE_CONTENT" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CLUTTER_OBTAINABLE" ]; then jq '.WorldConfig.WorldConfiguration.clutterObtainable = $val' --arg val "$WORLDCONFIG_CLUTTER_OBTAINABLE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_LIGHTNING_FIRES" ]; then jq '.WorldConfig.WorldConfiguration.lightningFires = ($val | test("true"))' --arg val "$WORLDCONFIG_LIGHTNING_FIRES" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPORAL_STABILITY" ]; then jq '.WorldConfig.WorldConfiguration.temporalStability = ($val | test("true"))' --arg val "$WORLDCONFIG_TEMPORAL_STABILITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPORAL_STORMS" ]; then jq '.WorldConfig.WorldConfiguration.temporalStorms = $val' --arg val "$WORLDCONFIG_TEMPORAL_STORMS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPSTORM_DURATION_MUL" ]; then jq '.WorldConfig.WorldConfiguration.tempstormDurationMul = $val' --arg val "$WORLDCONFIG_TEMPSTORM_DURATION_MUL" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPORAL_RIFTS" ]; then jq '.WorldConfig.WorldConfiguration.temporalRifts = $val' --arg val "$WORLDCONFIG_TEMPORAL_RIFTS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPORAL_GEAR_RESPAWN_USES" ]; then jq '.WorldConfig.WorldConfiguration.temporalGearRespawnUses = $val' --arg val "$WORLDCONFIG_TEMPORAL_GEAR_RESPAWN_USES" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_TEMPORAL_STORM_SLEEPING" ]; then jq '.WorldConfig.WorldConfiguration.temporalStormSleeping = $val' --arg val "$WORLDCONFIG_TEMPORAL_STORM_SLEEPING" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_WORLD_CLIMATE" ]; then jq '.WorldConfig.WorldConfiguration.worldClimate = $val' --arg val "$WORLDCONFIG_WORLD_CLIMATE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_LANDCOVER" ]; then jq '.WorldConfig.WorldConfiguration.landcover = $val' --arg val "$WORLDCONFIG_LANDCOVER" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_OCEANSCALE" ]; then jq '.WorldConfig.WorldConfiguration.oceanscale = $val' --arg val "$WORLDCONFIG_OCEANSCALE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_UPHEAVEL_COMMONNESS" ]; then jq '.WorldConfig.WorldConfiguration.upheavelCommonness = $val' --arg val "$WORLDCONFIG_UPHEAVEL_COMMONNESS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GEOLOGIC_ACTIVITY" ]; then jq '.WorldConfig.WorldConfiguration.geologicActivity = $val' --arg val "$WORLDCONFIG_GEOLOGIC_ACTIVITY" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_LANDFORM_SCALE" ]; then jq '.WorldConfig.WorldConfiguration.landformScale = $val' --arg val "$WORLDCONFIG_LANDFORM_SCALE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_WORLD_WIDTH" ]; then jq '.WorldConfig.WorldConfiguration.worldWidth = $val' --arg val "$WORLDCONFIG_WORLD_WIDTH" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_WORLD_LENGTH" ]; then jq '.WorldConfig.WorldConfiguration.worldLength = $val' --arg val "$WORLDCONFIG_WORLD_LENGTH" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_WORLD_EDGE" ]; then jq '.WorldConfig.WorldConfiguration.worldEdge = $val' --arg val "$WORLDCONFIG_WORLD_EDGE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_POLAR_EQUATOR_DISTANCE" ]; then jq '.WorldConfig.WorldConfiguration.polarEquatorDistance = $val' --arg val "$WORLDCONFIG_POLAR_EQUATOR_DISTANCE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GLOBAL_TEMPERATURE" ]; then jq '.WorldConfig.WorldConfiguration.globalTemperature = $val' --arg val "$WORLDCONFIG_GLOBAL_TEMPERATURE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GLOBAL_PRECIPITATION" ]; then jq '.WorldConfig.WorldConfiguration.globalPrecipitation = $val' --arg val "$WORLDCONFIG_GLOBAL_PRECIPITATION" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GLOBAL_FORESTATION" ]; then jq '.WorldConfig.WorldConfiguration.globalForestation = $val' --arg val "$WORLDCONFIG_GLOBAL_FORESTATION" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_GLOBAL_DEPOSIT_SPAWN_RATE" ]; then jq '.WorldConfig.WorldConfiguration.globalDepositSpawnRate = $val' --arg val "$WORLDCONFIG_GLOBAL_DEPOSIT_SPAWN_RATE" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SURFACE_COPPER_DEPOSITS" ]; then jq '.WorldConfig.WorldConfiguration.surfaceCopperDeposits = $val' --arg val "$WORLDCONFIG_SURFACE_COPPER_DEPOSITS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SURFACE_TIN_DEPOSITS" ]; then jq '.WorldConfig.WorldConfiguration.surfaceTinDeposits = $val' --arg val "$WORLDCONFIG_SURFACE_TIN_DEPOSITS" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_SNOW_ACCUM" ]; then jq '.WorldConfig.WorldConfiguration.snowAccum = $val' --arg val "$WORLDCONFIG_SNOW_ACCUM" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_ALLOW_LAND_CLAIMING" ]; then jq '.WorldConfig.WorldConfiguration.allowLandClaiming = ($val | test("true"))' --arg val "$WORLDCONFIG_ALLOW_LAND_CLAIMING" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_CLASS_EXCLUSIVE_RECIPES" ]; then jq '.WorldConfig.WorldConfiguration.classExclusiveRecipes = ($val | test("true"))' --arg val "$WORLDCONFIG_CLASS_EXCLUSIVE_RECIPES" $serverconfig | sponge $serverconfig ; fi
-if [ -n "$WORLDCONFIG_AUCTION_HOUSE" ]; then jq '.WorldConfig.WorldConfiguration.auctionHouse = ($val | test("true"))' --arg val "$WORLDCONFIG_AUCTION_HOUSE" $serverconfig | sponge $serverconfig ; fi
+# Loop through settings
+for key in "${!settings[@]}"; do
+	val=$(eval echo \$$key)
+	path=${settings[$key]}
+	
+	if [ -n "$val" ]; then
+		if echo "$path" | grep -q "|boolean"; then
+			if ! is_boolean "$val"; then
+				echo "Warning: Value '$val' in '$key' is not a valid boolean (true/false). Using default value..."
+				continue;
+			fi
+			jq_path=$(echo "$path" | sed 's/|boolean//')
+			jq "$jq_path = $val" "$serverconfig" | sponge "$serverconfig"
+		elif echo "$path" | grep -q "|tonumber"; then
+			if ! is_number "$val"; then
+				echo "Warning: Value '$val' in '$key' is not a valid number. Using default value..."
+				continue;
+			jq_path=$(echo "$path" | sed 's/|tonumber//')
+			jq "$jq_path = (\$val|tonumber)" --arg val "$val" "$serverconfig" | sponge "$serverconfig"
+		else
+			jq_path="$path"
+			jq "$jq_path = \$val" --arg val "$val" "$serverconfig" | sponge "$serverconfig"
+		fi
+	fi
+done
 
 # Start server
 echo "Launching server..."
