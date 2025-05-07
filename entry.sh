@@ -114,6 +114,7 @@ for key in "${!settings[@]}"; do
 			if ! is_number "$val"; then
 				echo "Warning: Value '$val' in '$key' is not a valid number. Using default value..."
 				continue;
+			fi
 			jq_path=$(echo "$path" | sed 's/|tonumber//')
 			jq "$jq_path = (\$val|tonumber)" --arg val "$val" "$serverconfig" | sponge "$serverconfig"
 		else
@@ -123,7 +124,6 @@ for key in "${!settings[@]}"; do
 	fi
 done
 
-# Start server
 echo "Launching server..."
 cd /data
 su vintagestory -s /bin/sh -p -c "dotnet VintagestoryServer.dll --dataPath /data/server-file"
