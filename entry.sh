@@ -8,6 +8,7 @@ if [ ! "$(id -g vintagestory)" -eq "$GID" ]; then groupmod -o -g "$GID" vintages
 
 VERSION_FILE="/data/server-file/.version" # Path to version file
 SERVER_DLL="/data/VintagestoryServer.dll" # Path to server dll
+SCREEN_NAME="vsscreen"
 
 # Function to determine if string is a boolean
 is_boolean() {
@@ -128,4 +129,4 @@ done
 
 echo "Launching server..."
 cd /data
-su vintagestory -s /bin/sh -p -c "dotnet VintagestoryServer.dll --dataPath /data/server-file"
+su vintagestory -s /bin/sh -p -c "screen -S $SCREEN_NAME -dm dotnet VintagestoryServer.dll --dataPath /data/server-file"
