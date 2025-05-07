@@ -65,6 +65,7 @@ declare -A settings=(
 	[SERVER_MAP_SIZE_X]=".MapSizeX|tonumber"
 	[SERVER_MAP_SIZE_Y]=".MapSizeY|tonumber"
 	[SERVER_MAP_SIZE_Z]=".MapSizeZ|tonumber"
+	[SERVER_STARTUP_COMMANDS]=".StartupCommands"
 	# WorldConfig subproperties
 	[WORLDCONFIG_GAMEMODE]=".WorldConfig.WorldConfiguration.gameMode"
 	[WORLDCONFIG_STARTING_CLIMATE]=".WorldConfig.WorldConfiguration.startingClimate"
@@ -123,6 +124,11 @@ for key in "${!settings[@]}"; do
 		fi
 	fi
 done
+
+# OnlyWhitelisted has been depricated and to configure whitelisted has to be done in startup commands
+if [ -n "$SERVER_WHITELIST" ]; then
+	jq --arg whitelist "$SERVER_WHITELIST" '.StartupCommands = (.StartupCommands + "/whitelist " + $whitelist)' "$serverconfig" | sponge"$serverconfig"
+fi
 
 echo "Launching server..."
 cd /data
