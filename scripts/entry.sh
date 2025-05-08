@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -34,6 +34,9 @@ if [ ! -f "$VERSION_FILE" ] || [ ! "$SERVER_VERSION" = "$(cat $VERSION_FILE || e
 else
 	echo "Server already up-to-date"
 fi
+
+#Download any mods in the MODS_LIST
+/data/scripts/downloadMods.sh
 
 chown -R vintagestory:vintagestory /data
 
@@ -98,6 +101,7 @@ declare -A settings=(
 	[WORLDCONFIG_TOOL_MINING_SPEED]=".WorldConfig.WorldConfiguration.toolMiningSpeed|tonumber"
 	[WORLDCONFIG_PROPICK_NODE_SEARCH_RADIUS]=".WorldConfig.WorldConfiguration.propickNodeSearchRadius|tonumber"
 	[WORLDCONFIG_MICROBLOCK_CHISELING]=".WorldConfig.WorldConfiguration.microblockChiseling"
+	[SERVER_DEFAULT_ROLE]=".DefaultRoleCode"
 )
 
 # Loop through settings

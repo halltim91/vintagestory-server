@@ -8,8 +8,11 @@ services:
     stdin_open: true
     tty: true
     environment:
+      TZ: America/Los_Angeles
+      MODS_LIST: "https://vintagestory-mods/super-mod-v1.0.2.zip https://vintagestory-mods/sweet-mod-v3.0.0.zip"
       SERVER_PASSWORD: "secret"
     ports:
       - "42420:42420"
     volumes:
       - ./data:/data/server-file
+      - ./mods:/mods

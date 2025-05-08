@@ -2,11 +2,17 @@
 
 ## Volumes
 
-- `/data/server-file` Vintage Story server file
+- `/data/server-file` Vintage Story server files
+- `/mods` A shared mods folder (optional)
 
 ## Environment varibles
 
 ### Vintage Story 
+
+
+#### Environment variables
+ - **TZ** Time zone
+ - **MOD_LIST** (optional) List of mod download URLs to download into container. List is space delimited. can be used instead of or alongside the mod volume
 
 #### Server configuration
 
@@ -19,7 +25,7 @@
 - **SERVER_MAX_CLIENTS** Maximum number of players
 - **SERVER_PASS_TIME_WHEN_EMPTY** Determines whether time continues to pass when no players are connected (default: false)
 - **SERVER_PASSWORD** Password of your server used to connect to it
-- **SERVER_WHITELIST** Whether to only allow whitelisted players to connect to your server
+- **SERVER_WHITELIST** Whether to only allow whitelisted players to connect to your server [off|on] d (default: off)
 - **SERVER_PUBLIC** Show your server in public server listing
 - **SERVER_SERVER_LANGUAGE** Determines language of server messages
 - **SERVER_PVP** Allow PvP (default: true)
@@ -31,6 +37,7 @@
 - **SERVER_MAP_SIZE_X** Map size X (default: 1024000)
 - **SERVER_MAP_SIZE_Y** Map size Y (default: 256)
 - **SERVER_MAP_SIZE_Z** Map size Z (default: 1024000)
+- **SERVER_DEFAULT_ROLE** Default role for new players [suvisitor, crvisitor, limitedsuplayer, limitedcrplayer, suplayer, crplayer, sumod, crmod, admin]
 
 <details>
     <summary>World Configuration Variables</summary>
@@ -121,20 +128,17 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
+    environment:
+      TZ: America/Los_Angeles
+      SERVER_PASSWORD: "secret"
     ports:
       - "42420:42420"
     volumes:
       - ./data:/data/server-file
+      - ./mods:/mods
 ```
 
-# Help
+# Mods
+Mods can be incorporated by adding a mod volumn to the container. This would be good for multiple instances that can share the same mod collections.
 
-## Server console
-
-You need `stdin_open` and `tty` to true in docker compose file.
-
-To interact with the console, you need to attach to the container, replace <container_name> with your container name.
-
-```docker attach <container_name>```
-
-Use Control-p Control-q to detach.
+Alternatively with the `MOD_LIST` environment variable, create a string with a list of URLs to the download links of mods (https://mods.vintagestory.at/download/42769/sweet-mod-1.0.0.zip) separated by spaces. these mods will get automatically be downloaded and extracted into the /data/server-file/Mods folder. 

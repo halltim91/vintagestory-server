@@ -10,7 +10,7 @@ ENV SERVER_BRANCH="stable" \
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y wget netcat jq moreutils screen nano && \
+    apt-get install --no-install-recommends -y wget netcat jq moreutils screen nano tzdata && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
@@ -28,8 +28,9 @@ EXPOSE 42420
 HEALTHCHECK --start-period=1m --interval=5s CMD nc -z  127.0.0.1 $SERVER_PORT
 
 VOLUME ["/data/server-file"]
+VOLUME ["/mods"]
 
 COPY serverconfig.json /data/default-serverconfig.json
+COPY scripts/ /data/scripts/
 
-COPY entry.sh /data/scripts/entry.sh
 CMD ["bash", "/data/scripts/entry.sh"]
