@@ -15,13 +15,13 @@ else
 		mod_name="${mod_filename%.zip}"
 
 		# Check if the mod is already downloaded
-		if [ -f "/data/server-file/Mods/$mod_name" ]; then
+		if [ -d "/data/server-file/Mods/$mod_name" ]; then
 			echo "Mod already downloaded: $mod_name. Skipping download."
 		else
 			echo "Downloading mod: $mod_url"
 
 			# Download the mod into /data/server-file/Mods
-			wget "$mod_url" -O /data/server-file/Mods/"$mod_filename"
+			wget -q "$mod_url" -O /data/server-file/Mods/"$mod_filename"
 
 			# Extract the mod contents
 			if [ $? -eq 0 ]; then
