@@ -12,7 +12,7 @@
 
         if screen -list | grep -q "$screen_name"; then
             echo "Sending command: $cmd"
-            screen -S "$SCREEN_NAME" -X stuff "$cmd$(printf \\r)"
+            su vintagestory -s /bin/sh -p -c "screen -S $SCREEN_NAME -X stuff \"$cmd$(printf \\r)\""
             
             # short delay between commands to actually do stuff
             sleep 0.5
