@@ -32,5 +32,6 @@ VOLUME ["/mods"]
 
 COPY serverconfig.json /data/default-serverconfig.json
 COPY scripts/ /data/scripts/
+RUN chmod -R +x /data/scripts
 
 CMD ["bash", "/data/scripts/entry.sh"]
