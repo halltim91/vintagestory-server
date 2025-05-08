@@ -10,7 +10,7 @@ ENV SERVER_BRANCH="stable" \
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y wget netcat jq moreutils screen nano tzdata && \
+    apt-get install --no-install-recommends -y wget netcat jq moreutils screen nano tzdata unzip && \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
