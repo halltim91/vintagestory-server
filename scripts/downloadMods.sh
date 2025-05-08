@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if MODS_LIST environment variable is set
-if [ -z "$MODS_LIST" ]; then
+if [ -z "$MOD_LIST" ]; then
 	echo "No mods to download"
 else
 	mkdir -p /data/server-file/Mods
