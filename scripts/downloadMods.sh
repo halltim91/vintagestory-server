@@ -7,7 +7,7 @@ else
 	mkdir -p /data/server-file/Mods
 
 	# Iterate over each mod URL (space-separated)
-	for mod_url in $MODS_LIST; do
+	for mod_url in $MOD_LIST; do
 		
 		mod_filename=$(basename "$mod_url")
 		mod_name="${mod_filename%.zip}"
