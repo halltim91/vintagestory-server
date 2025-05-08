@@ -130,3 +130,5 @@ done
 echo "Launching server..."
 cd /data
 su vintagestory -s /bin/sh -p -c "screen -S $SCREEN_NAME -dm dotnet VintagestoryServer.dll --dataPath /data/server-file"
+
+sleep infinity
