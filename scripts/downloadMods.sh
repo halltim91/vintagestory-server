@@ -13,8 +13,8 @@ else
 		mod_name="${mod_filename%.zip}"
 
 		# Check if the mod is already downloaded
-		if [ -f "/data/server-file/Mods/$mod_filename" ]; then
-			echo "Mod already downloaded: $mod_filename. Skipping download."
+		if [ -f "/data/server-file/Mods/$mod_name" ]; then
+			echo "Mod already downloaded: $mod_name. Skipping download."
 		else
 			echo "Downloading mod: $mod_url"
 
