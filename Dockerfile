@@ -6,7 +6,9 @@ ENV SERVER_BRANCH="stable" \
     SERVER_PORT="42420" \
     WORLDCONFIG_PROPICK_NODE_SEARCH_RADIUS="6" \
     UID="1000" \
-    GID="1000"
+    GID="1000" \
+    SCREEN_NAME="server"
+
 
 # Install dependencies
 RUN apt-get update && \
@@ -33,5 +35,9 @@ VOLUME ["/mods"]
 COPY serverconfig.json /data/default-serverconfig.json
 COPY scripts/ /data/scripts/
 RUN chmod -R +x /data/scripts
+
+# Add the servercmd command
+COPY scripts/servercmd.sh /usr/local/bin/servercmd
+RUN chmod +x /usr/local/bin/servercmd
 
 CMD ["bash", "/data/scripts/entry.sh"]
