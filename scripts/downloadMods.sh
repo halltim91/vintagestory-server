@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Checking for Mods to download"
+
 # Check if MODS_LIST environment variable is set
 if [ -z "$MOD_LIST" ]; then
 	echo "No mods to download"
@@ -24,7 +26,7 @@ else
 			# Extract the mod contents
 			if [ $? -eq 0 ]; then
 				echo "Download successful: $mod_filename"
-				unzip -o /data/server-file/Mods/"$mod_filename" -d /data/server-file/Mods/"$mod_name"
+				unzip -qn /data/server-file/Mods/"$mod_filename" -d /data/server-file/Mods/"$mod_name"
 
 				# Clean up the zip file after extraction
 				rm /data/server-file/Mods/"$mod_filename"
