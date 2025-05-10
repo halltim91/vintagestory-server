@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Allows user to send server commands without being in the server screen
+
 commands=$1
 
 # Split commands by |

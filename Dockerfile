@@ -40,4 +40,8 @@ RUN chmod -R +x /data/scripts
 COPY scripts/servercmd.sh /usr/local/bin/servercmd
 RUN chmod +x /usr/local/bin/servercmd
 
+# Add attach command
+COPY scripts/attach.sh /usr/local/bin/attach
+RUN chmod +x /usr/local/bin/attach
+
 CMD ["bash", "/data/scripts/entry.sh"]
