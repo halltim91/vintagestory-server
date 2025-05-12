@@ -44,4 +44,4 @@ RUN chmod +x /usr/local/bin/servercmd
 COPY scripts/attach.sh /usr/local/bin/attach
 RUN chmod +x /usr/local/bin/attach
 
-ENTRYPOINT ["bash", "/data/scripts/entry.sh"]
+ENTRYPOINT ["/data/scripts/entry.sh"]

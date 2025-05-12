@@ -130,9 +130,18 @@ for key in "${!settings[@]}"; do
 	fi
 done
 
+cleanup(){
+	echo "Stopping server"
+	servercmd "/stop"
+}
+
+trap cleanup SIGTERM SIGINT
+
 # Launch server in a screen
 echo "Launching server..."
 cd /data
 screen -S $SCREEN_NAME -dm bash -c "su vintagestory -s /bin/sh -c 'dotnet VintagestoryServer.dll --dataPath /data/server-file'"
 
-sleep infinity
+while true; do
+	sleep 1
+done
