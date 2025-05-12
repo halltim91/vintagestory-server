@@ -131,7 +131,7 @@ for key in "${!settings[@]}"; do
 done
 
 cleanup(){
-	echo "Stopping server"
+	echo "Stopping server..."
 	servercmd "/stop"
 }
 
