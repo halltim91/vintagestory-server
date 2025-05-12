@@ -130,8 +130,9 @@ for key in "${!settings[@]}"; do
 	fi
 done
 
+# Launch server in a screen
 echo "Launching server..."
 cd /data
-su vintagestory -s /bin/sh -p -c "screen -S $SCREEN_NAME -dm dotnet VintagestoryServer.dll --dataPath /data/server-file"
+screen -S $SCREEN_NAME -dm bash -c "su vintagestory -s /bin/sh -c 'dotnet VintagestoryServer.dll --dataPath /data/server-file'"
 
 sleep infinity
